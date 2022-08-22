@@ -69,6 +69,8 @@ class Dense(Layer):
         """
         Backwards gradients
         """
+        grads = np.array(grads)
+
         # (batch_size, n_neurons) x (n_neurons, n_inputs) -> (batch_size, n_inputs)
         grad_inputs = grads @ self.weigths[:, 1:]
 

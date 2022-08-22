@@ -1,18 +1,24 @@
 import numpy as np
 
+from activations import softmax
 
-def categorical_cross_entropy(y_pred: np.ndarray, y_true: np.ndarray) -> np.ndarray:
-    """
-    Calculate categorical cross-entropy
 
-    Parameters
-    ---------
+class CategoricalCrossEntropy:
+    def __call__(self, logits: np.ndarray, y_true: np.ndarray) -> np.ndarray:
+        """
+        Calculate categorical cross-entropy from logits
 
-    y_pred :
-        predictions array  with shape (batch_size, n_outputs)
+        Parameters
+        ---------
 
-    y_true :
-        one-hot encoded labels (shape: (batch_size, n_outputs))
-    """
+        logits :
+            logits array with shape (batch_size, n_outputs)
 
-    return np.sum(-y_true * np.log(y_pred), axis=1)
+        y_true :
+            one-hot encoded labels (shape: (batch_size, n_outputs))
+        """
+        y_pred = softmax(logits)
+        self.grad = y_pred - y_true
+
+        return np.mean(np.sum(-y_true * np.log(y_pred), axis=1))
+
