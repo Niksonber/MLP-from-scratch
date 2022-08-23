@@ -2,26 +2,33 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+import tape
+
 
 class Layer(ABC):
-    def __init__(self, training=True, trainable=True) -> None:
+    def __init__(self, training=True) -> None:
         super().__init__()
 
-        self.trainable = trainable
         self.training = training
-        self._last_input = None
-
-    def record(self, X):
-        if self.training:
-            self._last_input = X
+        self.grad = None
+        self.grad_inputs = None
 
     @abstractmethod
     def __call__(self, X):
         pass
 
     @abstractmethod
-    def backwards(self, grads):
+    def gradient(self, X):
         pass
+
+    def backwards(self, grads):
+        """
+        Backwards gradients
+        """
+        if self.grad is not None:
+            self.grad = grads.T @ self.grad
+
+        return grads * self.grad_inputs
 
 
 class Dense(Layer):
@@ -37,7 +44,7 @@ class Dense(Layer):
         super().__init__(training)
 
         # Bias is defined as the weight from an aditional input with value 1
-        self.weigths = np.random.random(size=(n_neurons, input_size + 1))
+        self.weigths = 0.1 * np.random.standard_normal(size=(n_neurons, input_size + 1))
 
     @classmethod
     def from_weights(cls, weights):
@@ -50,31 +57,19 @@ class Dense(Layer):
 
         return instance
 
+    @tape.array_2d
+    @tape.insert_artificial_input
+    @tape.record
     def __call__(self, X: np.ndarray) -> np.ndarray:
         """
         Feed-foward
+        Note: the bias are just a usual weight from an artificial input with value 1
         """
-        if not isinstance(X, np.ndarray):
-            X = np.array(X)
-
-        # forces input to have 2d shape (batch_size x input_size)
-        # and insert artificial input 1 to bias weight
-        X = np.insert((X if X.ndim > 1 else X[np.newaxis]), 0, values=1.0, axis=1)
-
-        # if is in training mode, store last input to backpropagation step
-        self.record(X)
         return X @ self.weigths.T
 
-    def backwards(self, grads):
-        """
-        Backwards gradients
-        """
-        grads = np.array(grads)
-
+    def gradient(self, X):
         # (batch_size, n_neurons) x (n_neurons, n_inputs) -> (batch_size, n_inputs)
-        grad_inputs = grads @ self.weigths[:, 1:]
+        self.grad_inputs = self.weigths[:, 1:]
 
         # (n_neurons, batch_size) x (batch_size, n_inputs) -> (n_neurons, n_inputs)
-        self.grad = grads.T @ self._last_input
-
-        return grad_inputs
+        self.grad = X
